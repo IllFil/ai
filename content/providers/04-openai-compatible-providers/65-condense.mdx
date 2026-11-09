@@ -1,0 +1,39 @@
+---
+title: Condense
+description: Use the Condense OpenAI-compatible proxy with the AI SDK.
+---
+
+# Condense
+
+[Condense](https://condense.chat/) compresses repeated context in agent conversations before forwarding requests to OpenAI. You can call its Chat Completions endpoint with the AI SDK OpenAI Compatible provider.
+
+## Setup
+
+<InstallPackages packages="ai @ai-sdk/openai-compatible" />
+
+Set two server-side environment variables. `OPENAI_API_KEY` holds your OpenAI API key. `CONDENSE_AUTH_TOKEN` holds your [Condense organization API key](https://condense.chat/docs/api/).
+
+## Generate text
+
+```ts
+import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
+import { generateText } from 'ai';
+
+const condense = createOpenAICompatible({
+  name: 'condense',
+  baseURL: 'https://api.condense.chat/openai/v1',
+  apiKey: process.env.OPENAI_API_KEY,
+  headers: {
+    'X-Condense-Auth-Token': process.env.CONDENSE_AUTH_TOKEN!,
+  },
+});
+
+const { text } = await generateText({
+  model: condense.chatModel('gpt-5-mini'),
+  prompt: 'Explain prompt caching in one sentence.',
+});
+
+console.log(text);
+```
+
+For session tracking and response headers, see the [Condense API reference](https://condense.chat/docs/reference/).

@@ -1,0 +1,133 @@
+---
+title: condense.chat
+description: Learn how to use condense.chat with the AI SDK Anthropic and OpenAI providers.
+---
+
+# condense.chat
+
+[condense.chat](https://condense.chat) is a proxy that sits between your application and the LLM provider. It manages the context sent on each call and drops context the agent no longer needs, which lowers token spend.
+
+condense.chat does not ship a separate provider package. You use it with the [Anthropic](/providers/ai-sdk-providers/anthropic) and [OpenAI](/providers/ai-sdk-providers/openai) providers by setting `baseURL` and adding an authentication header.
+
+## Setup
+
+Install the provider package for the models you call:
+
+<InstallPackages packages="@ai-sdk/anthropic @ai-sdk/openai" />
+
+### Credentials
+
+Each request carries two keys:
+
+- Your condense.chat key in the `X-Condense-Auth-Token` header. condense.chat keys start with `ck_api_`.
+- Your upstream provider key, which the AI SDK provider sends as usual (`x-api-key` for Anthropic, `Authorization: Bearer` for OpenAI). condense.chat forwards it unchanged and stores only a SHA-256 fingerprint of it.
+
+```bash filename=".env"
+CONDENSE_AUTH_TOKEN=ck_api_...
+ANTHROPIC_API_KEY=your-anthropic-api-key
+OPENAI_API_KEY=your-openai-api-key
+```
+
+See [Getting an API key](#getting-an-api-key) for how to get a condense.chat key.
+
+## Anthropic
+
+Create an Anthropic provider instance that points to the condense.chat Anthropic endpoint. The `@ai-sdk/anthropic` base URL includes the `/v1` path segment (the default is `https://api.anthropic.com/v1`), so keep `/v1` at the end:
+
+```ts
+import { createAnthropic } from '@ai-sdk/anthropic';
+
+const anthropic = createAnthropic({
+  baseURL: 'https://api.condense.chat/anthropic/v1',
+  headers: {
+    'X-Condense-Auth-Token': process.env.CONDENSE_AUTH_TOKEN!,
+  },
+});
+```
+
+The provider reads your Anthropic key from the `ANTHROPIC_API_KEY` environment variable, or from the `apiKey` setting.
+
+### `generateText`
+
+```ts
+import { generateText } from 'ai';
+
+const { text } = await generateText({
+  model: anthropic('claude-sonnet-4-5'),
+  prompt: 'Write a vegetarian lasagna recipe for 4 people.',
+});
+
+console.log(text);
+```
+
+### `streamText`
+
+```ts
+import { streamText } from 'ai';
+
+const result = streamText({
+  model: anthropic('claude-sonnet-4-5'),
+  prompt: 'Write a short story about a robot learning to paint.',
+});
+
+for await (const textPart of result.textStream) {
+  process.stdout.write(textPart);
+}
+```
+
+## OpenAI
+
+Create an OpenAI provider instance that points to the condense.chat OpenAI endpoint:
+
+```ts
+import { createOpenAI } from '@ai-sdk/openai';
+
+const openai = createOpenAI({
+  baseURL: 'https://api.condense.chat/openai/v1',
+  headers: {
+    'X-Condense-Auth-Token': process.env.CONDENSE_AUTH_TOKEN!,
+  },
+});
+```
+
+The provider reads your OpenAI key from the `OPENAI_API_KEY` environment variable, or from the `apiKey` setting. condense.chat supports both the Responses API (`openai('model-id')`) and the Chat Completions API (`openai.chat('model-id')`).
+
+```ts
+import { generateText } from 'ai';
+
+const { text } = await generateText({
+  model: openai('gpt-5-mini'),
+  prompt: 'Write a vegetarian lasagna recipe for 4 people.',
+});
+
+console.log(text);
+```
+
+## Sessions
+
+To group related requests into a session, send the optional `X-Condense-Session-Id` header. Use a UUID or your own ID of up to 128 characters. You can pass it per call with the `headers` option:
+
+```ts
+import { generateText } from 'ai';
+
+const { text } = await generateText({
+  model: anthropic('claude-sonnet-4-5'),
+  prompt: 'Summarize the previous steps.',
+  headers: {
+    'X-Condense-Session-Id': sessionId,
+  },
+});
+```
+
+The [API reference](https://condense.chat/docs/reference/) lists the other optional request headers and the response headers.
+
+## Getting an API key
+
+API access is enabled for organization accounts after a short call. See [sign-up](https://condense.chat/docs/api/#signup) for details, or [book a call](https://cal.com/condense.chat/15min).
+
+## More Information
+
+- [condense.chat documentation](https://condense.chat/docs/)
+- [Quickstart](https://condense.chat/docs/quickstart/)
+- [API reference](https://condense.chat/docs/reference/)
+- [Dashboard](https://helm.condense.chat)
